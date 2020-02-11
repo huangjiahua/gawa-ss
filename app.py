@@ -14,14 +14,6 @@ DB_PASSWORD = app.config['DB_PASSWORD']
 DB_HOST = app.config['DB_HOST']
 DB_DB = app.config['DB_DB']
 
-try:
-    conn = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD,
-                                   host=DB_HOST, database=DB_DB)
-except mysql.connector.Error as err:
-    app.logger.error(err)
-    exit(1)
-app.logger.info("Connected to database")
-
 
 class PKCS7Encoder():
     """
@@ -102,6 +94,13 @@ def show_ss_page():
 
 @app.route('/ss/<name>')
 def show_user_content(name):
+    try:
+        conn = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD,
+                                       host=DB_HOST, database=DB_DB)
+    except mysql.connector.Error as err:
+        app.logger.error(err)
+        abort(404, description="Resource not found")
+
     cursor = conn.cursor()
 
     user_query = "SELECT password FROM users WHERE name = '{}'".format(name)
@@ -113,6 +112,8 @@ def show_user_content(name):
     except mysql.connector.Error as err:
         app.logger.debug("Database error: {}".format(err))
         abort(404, description="Resource not found")
+        cursor.close()
+        conn.close()
 
     user_pass = None
 
@@ -121,6 +122,8 @@ def show_user_content(name):
 
     if user_pass == None:
         abort(404, description="No such a user")
+        cursor.close()
+        conn.close()
 
     app.logger.debug(user_pass)
     cursor.reset()
@@ -134,6 +137,8 @@ def show_user_content(name):
         cursor.execute(query)
     except mysql.connector.Error:
         abort(404, description="Resource not found")
+        cursor.close()
+        conn.close()
 
     host = ""
     port = ""
@@ -146,6 +151,8 @@ def show_user_content(name):
         password = str(psw)
         method = m
 
+    cursor.close()
+    conn.close()
     return {
         "name": encrypt_val(name, user_pass),
         "host": encrypt_val(host, user_pass),
